@@ -1,3 +1,9 @@
+/*
+ * // Copyright 2025 The Dart and Flutter teams. All rights reserved.
+ * // Use of this source code is governed by a BSD-style license that can be
+ * // found in the LICENSE file.
+ */
+
 import 'dart:io';
 
 const String ansiEscapeLiteral = '\x1B';
@@ -6,13 +12,12 @@ const String ansiEscapeLiteral = '\x1B';
 /// console. [duration] defines how many milliseconds there will be
 /// between each line print.
 Future<void> write(String text, {int duration = 50}) async {
-  final lines = text.split('\n');
-  for (final line in lines) {
+  final List<String> lines = text.split('\n');
+  for (final String line in lines) {
     await _delayedPrint('$line \n', duration: duration);
   }
 }
 
-/// Prints line-by-line
 Future<void> _delayedPrint(String text, {int duration = 0}) async {
   return Future<void>.delayed(
     Duration(milliseconds: duration),
@@ -26,7 +31,7 @@ Future<void> _delayedPrint(String text, {int duration = 0}) async {
 ///
 /// As a demo, only includes colors this program cares about.
 /// If you want to use more colors, add them here.
-enum ConsoleColor(this.r, this.g, this.b) {
+enum ConsoleColor {
   /// Sky blue - #b8eafe
   lightBlue(184, 234, 254),
 
@@ -50,18 +55,20 @@ enum ConsoleColor(this.r, this.g, this.b) {
   final int g;
   final int b;
 
+  const ConsoleColor(this.r, this.g, this.b);
+
   /// Change text color for all future output (until reset)
   /// ```dart
   /// print('hello'); // prints in terminal default color
-  /// print(ConsoleColor.red.enableBackground);
-  /// print('hello'); // prints with red background color
+  /// print('AnsiColor.red.enableForeground');
+  /// print('hello'); // prints in red color
   /// ```
   String get enableBackground => '$ansiEscapeLiteral[48;2;$r;$g;${b}m';
 
   /// Change text color for all future output (until reset)
   /// ```dart
   /// print('hello'); // prints in terminal default color
-  /// print(ConsoleColor.red.enableForeground);
+  /// print('AnsiColor.red.enableForeground');
   /// print('hello'); // prints in red color
   /// ```
   String get enableForeground => '$ansiEscapeLiteral[38;2;$r;$g;${b}m';
@@ -83,9 +90,9 @@ extension TextRenderUtils on String {
   String get titleText => ConsoleColor.lightBlue.applyForeground(this);
 
   List<String> splitLinesByLength(int length) {
-    final words = split(' ');
-    final output = <String>[];
-    final buffer = StringBuffer();
+    final List<String> words = split(' ');
+    final List<String> output = <String>[];
+    final StringBuffer buffer = StringBuffer();
     for (int i = 0; i < words.length; i++) {
       final String word = words[i];
       if (buffer.length + word.length <= length) {

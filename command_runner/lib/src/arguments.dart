@@ -8,9 +8,9 @@ class ArgResults {
   String? commandArg;
   Map<Option, Object?> options = {};
 
-  // Returns true if the flag exists.
+  // Returns true if the flag exists
   bool flag(String name) {
-    // Only check flags, because we're sure that flags are booleans.
+    // Only check flags, because we're sure that flags are booleans
     for (var option in options.keys.where(
       (opt) => opt.type == OptionType.flag,
     )) {
@@ -24,6 +24,13 @@ class ArgResults {
   ({Option option, Object? input}) getOption(String name) {
     var mapEntry = options.entries.firstWhere(
       (entry) => entry.key.name == name || entry.key.abbr == name,
+      orElse: () {
+        throw ArgumentException(
+          'Input $name is not a known option',
+          command?.name ?? '',
+          name,
+        );
+      },
     );
 
     return (option: mapEntry.key, input: mapEntry.value);
@@ -34,23 +41,16 @@ class ArgResults {
   }
 }
 
-abstract class Argument {
-  /// In the case of flags, the default value is a bool.
-  /// In other options and commands, the default value is a String.
-  ///
-  /// NB: flags are just Option objects that don't take arguments
+sealed class Argument {
+  // In the case of flags, the default value is a bool
+  // In other options and commands, the default value is String
+  // NB: flags are just Option objects that don't take arguments
   Object? get defaultValue;
-
-  /// an optional `String` that provides a description.
   String? get help;
 
-  /// a `String` that uniquely identifies the argument.
   String get name;
-
-  /// a getter that provides a `String` showing how to use the argument.
   String get usage;
 
-  /// an optional `String` to give a hint about the expected value.
   String? get valueHelp;
 }
 
@@ -83,7 +83,10 @@ abstract class Command extends Argument {
     return '$name:  $description';
   }
 
-  /// A flag is an `[Option]` that's treated as a boolean.
+  /// A flag is an [Option] that's treated as a boolean.
+  /// All flags have a default value of false, and are
+  /// considered true if the flag is passed into the
+  /// command at all.
   void addFlag(String name, {String? help, String? abbr, String? valueHelp}) {
     _options.add(
       .new(
@@ -97,7 +100,6 @@ abstract class Command extends Argument {
     );
   }
 
-  /// An option is an `[Option]` that takes a value.
   void addOption(
     String name, {
     String? help,
@@ -117,17 +119,33 @@ abstract class Command extends Argument {
     );
   }
 
-  FutureOr<Object?> run(ArgResults args);
+  FutureOr<String> run(ArgResults args);
 }
 
-final class Option(
-  @override final String name, {
-  required final OptionType type,
-  @override final String? help,
-  final String? abbr,
-  @override final Object? defaultValue,
-  @override final String? valueHelp,
+class Option(
+  this.name, {
+  required this.type,
+  this.help,
+  this.abbr,
+  this.defaultValue,
+  this.valueHelp,
 }) extends Argument {
+  @override
+  final String name;
+
+  final OptionType type;
+
+  @override
+  final String? help;
+
+  final String? abbr;
+
+  @override
+  final Object? defaultValue;
+
+  @override
+  final String? valueHelp;
+
   @override
   String get usage => switch (abbr) {
     final abbr? => '-$abbr,--$name: $help',

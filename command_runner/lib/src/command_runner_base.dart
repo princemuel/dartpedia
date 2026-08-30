@@ -2,12 +2,13 @@ import 'dart:async';
 import 'dart:collection';
 import 'dart:io';
 
-import 'arguments.dart';
-import 'exceptions.dart';
+import 'package:command_runner/command_runner.dart';
 
+/// Establishes a protocol for the app to communicate continuously with I/O.
+/// When [run] is called, the app will start waiting for input from stdin.
+/// Input can also be added programatically via the [onInput] method.
+///
 class CommandRunner({this.onOutput, this.onError}) {
-  final Map<String, Command> _commands = <String, Command>{};
-
   /// If not null, this method is used to handle output. Useful if you want to
   /// execute code before the output is printed to the console, or if you
   /// want to do something other than print output the console.
@@ -16,8 +17,10 @@ class CommandRunner({this.onOutput, this.onError}) {
 
   FutureOr<void> Function(Object)? onError;
 
+  final Map<String, Command> _commands = <String, Command>{};
+
   UnmodifiableSetView<Command> get commands =>
-      UnmodifiableSetView<Command>(<Command>{..._commands.values});
+      UnmodifiableSetView<Command>({..._commands.values});
 
   /// Returns usage for the executable only.
   /// Should be overridden if you aren't using [HelpCommand]
@@ -28,16 +31,43 @@ class CommandRunner({this.onOutput, this.onError}) {
   }
 
   void addCommand(Command command) {
-    // TODO: handle error (Commands can't have names that conflict)
-    _commands[command.name] = command;
-    command.runner = this;
+    if (_validateArgument(command)) {
+      _commands[command.name] = command;
+      command.runner = this;
+    }
   }
 
-  ArgResults parse(List<String> input) {
-    ArgResults results = ArgResults();
+  /// Parses the arguments passed into the program
+  /// This demo [CommandRunner] package requires a stricter structure than pkg:args.
+  ///
+  /// The following inputs would be parsed successfully.
+  /// Minimum input:
+  /// ```bash
+  /// $ dart <executable>
+  /// ```
+  ///
+  /// Only commands are top level inputs. There are no flags or options on the base executable.
+  /// ```bash
+  /// $ dart <executable> <command>
+  /// ```
+  ///
+  /// Commands can take one position arg, which is a [String]. The positional arg can
+  /// appear anywhere in the input (i.e. after options).
+  /// ```bash
+  /// $ dart <executable> <command> "positional arg"
+  /// ```
+  ///
+  /// Commands can have options (including flags).
+  /// Options take one arg, which is a [String]. It must immediately follow the option.
+  /// Flags are [Option] objects that take no arguments, and are parsed into [bool] types
+  /// ```bash
+  /// $ dart <executable> <command> --<option> "arg" --<flag>
+  /// ```
+  ArgResults parse(List<String> input, {ArgResults? argResults}) {
+    ArgResults results = argResults ?? ArgResults();
     if (input.isEmpty) return results;
 
-    // Throw an exception if the command is not recognized.
+    // Section: handle command
     if (_commands.containsKey(input.first)) {
       results.command = _commands[input.first];
       input = input.sublist(1);
@@ -48,8 +78,6 @@ class CommandRunner({this.onOutput, this.onError}) {
         input.first,
       );
     }
-
-    // Throw an exception if multiple commands are provided.
     if (results.command != null &&
         input.isNotEmpty &&
         _commands.containsKey(input.first)) {
@@ -60,13 +88,12 @@ class CommandRunner({this.onOutput, this.onError}) {
       );
     }
 
-    // Section: Handle options, including flags.
+    // Section: handle Options (including flags)
     Map<Option, Object?> inputOptions = {};
     int i = 0;
     while (i < input.length) {
       if (input[i].startsWith('-')) {
         var base = _removeDash(input[i]);
-        // Throw an exception if an option is not recognized for the given command.
         var option = results.command!.options.firstWhere(
           (option) => option.name == base || option.abbr == base,
           orElse: () {
@@ -79,13 +106,13 @@ class CommandRunner({this.onOutput, this.onError}) {
         );
 
         if (option.type == OptionType.flag) {
+          // all flags are false by default, and true if they appear at all
           inputOptions[option] = true;
           i++;
           continue;
         }
 
         if (option.type == OptionType.option) {
-          // Throw an exception if an option requires an argument but none is given.
           if (i + 1 >= input.length) {
             throw ArgumentException(
               'Option ${option.name} requires an argument',
@@ -93,7 +120,6 @@ class CommandRunner({this.onOutput, this.onError}) {
               option.name,
             );
           }
-
           if (input[i + 1].startsWith('-')) {
             throw ArgumentException(
               'Option ${option.name} requires an argument, but got another option ${input[i + 1]}',
@@ -103,10 +129,11 @@ class CommandRunner({this.onOutput, this.onError}) {
           }
           var arg = input[i + 1];
           inputOptions[option] = arg;
+          // increment 1 extra to account for the arg
           i++;
         }
+        // The arg must be a positional arg
       } else {
-        // Throw an exception if more than one positional argument is provided.
         if (results.commandArg != null && results.commandArg!.isNotEmpty) {
           throw ArgumentException(
             'Commands can only have up to one argument.',
@@ -116,9 +143,9 @@ class CommandRunner({this.onOutput, this.onError}) {
         }
         results.commandArg = input[i];
       }
+
       i++;
     }
-
     results.options = inputOptions;
 
     return results;
@@ -128,19 +155,23 @@ class CommandRunner({this.onOutput, this.onError}) {
     try {
       final ArgResults results = parse(input);
       if (results.command != null) {
-        Object? output = await results.command!.run(results);
+        String? output = await results.command!.run(results);
         if (onOutput != null) {
           await onOutput!(output.toString());
         } else {
           print(output.toString());
         }
       }
-    } on Exception catch (exception) {
-      if (onError != null) {
-        onError!(exception);
-      } else {
-        rethrow;
-      }
+    } on Exception catch (e) {
+      _onError(e);
+    }
+  }
+
+  void _onError(Object error) {
+    if (onError != null) {
+      onError!(error);
+    } else {
+      throw error;
     }
   }
 
@@ -152,5 +183,15 @@ class CommandRunner({this.onOutput, this.onError}) {
       return input.substring(1);
     }
     return input;
+  }
+
+  bool _validateArgument(Argument arg) {
+    if (_commands.containsKey(arg.name)) {
+      // This indicates a bug in the code of the consumer of this API that
+      // needs to be caught at compile time.
+      throw ArgumentError('Input ${arg.name} already exists.');
+    }
+
+    return true;
   }
 }

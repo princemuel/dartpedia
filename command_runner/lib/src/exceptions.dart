@@ -13,9 +13,4 @@ class ArgumentException(
   /// The name of the argument that was being parsed when the error was
   /// discovered.
   final String? argumentName;
-
-  @override
-  String toString() {
-    return 'ArgumentException: $message';
-  }
 }

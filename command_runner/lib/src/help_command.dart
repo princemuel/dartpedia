@@ -1,19 +1,24 @@
+/*
+ * // Copyright 2025 The Dart and Flutter teams. All rights reserved.
+ * // Use of this source code is governed by a BSD-style license that can be
+ * // found in the LICENSE file.
+ */
+
 import 'dart:async';
 
-import 'package:command_runner/command_runner.dart';
+import '../command_runner.dart';
 
-// Prints program and argument usage.
-//
-// When given a command as an argument, it prints the usage of
-// that command only, including its options and other details.
-// When the flag 'verbose' is set, it prints options and details for all commands.
-//
-// This command isn't automatically added to CommandRunner instances.
-// Packages users should add it themselves with [CommandRunner.addCommand],
-// or create their own command that prints usage.
-
-class HelpCommand extends Command {
-  new() {
+/// Prints program and argument usage.
+///
+/// When given a command as an argument, it prints the usage of
+/// that command only, including its options and other details.
+/// When the flag 'verbose' is set, it prints options and details for all commands.
+///
+/// This command isn't automatically added to CommandRunner instances.
+/// Packages users should add it themselves with [CommandRunner.addCommand],
+/// or create their own command that prints usage.
+class HelpCommand() extends Command {
+  this {
     addFlag(
       'verbose',
       abbr: 'v',
@@ -37,7 +42,7 @@ class HelpCommand extends Command {
   @override
   FutureOr<String> run(ArgResults args) async {
     final buffer = StringBuffer();
-    buffer.writeln(runner.usage.titleText);
+    buffer.writeln(runner.usage);
 
     if (args.flag('verbose')) {
       for (var cmd in runner.commands) {
@@ -47,13 +52,16 @@ class HelpCommand extends Command {
       return buffer.toString();
     }
 
+    // If an arg was passed in, verbose print that command's usage only
     if (args.hasOption('command')) {
       var (:option, :input) = args.getOption('command');
 
       var cmd = runner.commands.firstWhere(
         (command) => command.name == input,
         orElse: () {
-          throw ArgumentException('Input $input is not a known command.', name);
+          throw ArgumentException(
+            'Input ${args.commandArg} is not a known command.',
+          );
         },
       );
 
@@ -71,21 +79,17 @@ class HelpCommand extends Command {
   String _renderCommandVerbose(Command cmd) {
     final indent = ' ' * 10;
     final buffer = StringBuffer();
-
-    buffer.writeln(cmd.usage.instructionText); //abbr, name: description
+    buffer.writeln(cmd.usage); //abbr, name: description
     buffer.writeln('$indent ${cmd.help}');
-
     if (cmd.valueHelp != null) {
       buffer.writeln(
         '$indent [Argument] Required? ${cmd.requiresArgument}, Type: ${cmd.valueHelp}, Default: ${cmd.defaultValue ?? 'none'}',
       );
     }
-
     buffer.writeln('$indent Options:');
     for (var option in cmd.options) {
       buffer.writeln('$indent ${option.usage}');
     }
-
     return buffer.toString();
   }
 }
