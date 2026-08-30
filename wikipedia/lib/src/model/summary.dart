@@ -10,9 +10,6 @@ class Summary({
   this.url,
   this.description,
 }) {
-  /// Returns a new [Summary] instance.
-  this;
-
   ///
   TitlesSet titles;
 
@@ -36,6 +33,21 @@ class Summary({
 
   /// Wikidata description for the page
   String? description;
+
+  /// Returns a new [Summary] instance.
+  this;
+
+  @override
+  String toString() =>
+      'Summary['
+      'titles=$titles, '
+      'pageid=$pageid, '
+      'extract=$extract, '
+      'extractHtml=$extractHtml, '
+      'lang=$lang, '
+      'dir=$dir, '
+      'description=$description'
+      ']';
 
   /// Returns a new [Summary] instance
   static Summary fromJson(Map<String, Object?> payload) => switch (payload) {
@@ -85,16 +97,4 @@ class Summary({
       ),
     _ => throw FormatException('Could not deserialize Summary, json=$payload'),
   };
-
-  @override
-  String toString() =>
-      'Summary['
-      'titles=$titles, '
-      'pageid=$pageid, '
-      'extract=$extract, '
-      'extractHtml=$extractHtml, '
-      'lang=$lang, '
-      'dir=$dir, '
-      'description=$description'
-      ']';
 }

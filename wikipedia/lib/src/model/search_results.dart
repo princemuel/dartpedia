@@ -1,12 +1,21 @@
 class SearchResult {
-  SearchResult({required this.title, required this.url});
   final String title;
   final String url;
+  SearchResult({required this.title, required this.url});
 }
 
 class SearchResults(this.results, {this.searchTerm}) {
   final List<SearchResult> results;
   final String? searchTerm;
+
+  @override
+  String toString() {
+    final StringBuffer buffer = StringBuffer();
+    for (final SearchResult result in results) {
+      buffer.write('${result.url} \n');
+    }
+    return '\nSearchResults for $searchTerm: \n$buffer';
+  }
 
   static SearchResults fromJson(List<Object?> payload) {
     if (payload case [
@@ -25,14 +34,5 @@ class SearchResults(this.results, {this.searchTerm}) {
     }
 
     throw FormatException('Could not deserialize SearchResults, json=$payload');
-  }
-
-  @override
-  String toString() {
-    final StringBuffer buffer = StringBuffer();
-    for (final SearchResult result in results) {
-      buffer.write('${result.url} \n');
-    }
-    return '\nSearchResults for $searchTerm: \n$buffer';
   }
 }
