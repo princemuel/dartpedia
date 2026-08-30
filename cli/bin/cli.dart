@@ -1,70 +1,28 @@
+import 'package:cli/cli.dart';
 import 'package:command_runner/command_runner.dart';
 
-const version = '0.0.1';
+void main(List<String> arguments) async {
+  final errorLogger = initFileLogger('errors');
+  final app =
+      CommandRunner(
+          onOutput: (String output) async {
+            await write(output);
+          },
+          onError: (Object error) {
+            if (error is Error) {
+              errorLogger.severe(
+                '[Error] ${error.toString()}\n${error.stackTrace}',
+              );
+              throw error;
+            }
+            if (error is Exception) {
+              errorLogger.warning(error);
+            }
+          },
+        )
+        ..addCommand(HelpCommand())
+        ..addCommand(SearchCommand(logger: errorLogger))
+        ..addCommand(GetArticleCommand(logger: errorLogger));
 
-void main(List<String> arguments) {
-  var commandRunner = CommandRunner(
-    onOutput: (String output) async {
-      await write(output);
-    },
-    onError: (Object error) {
-      if (error is Error) {
-        throw error;
-      }
-      if (error is Exception) {
-        print(error);
-      }
-    },
-  )..addCommand(HelpCommand());
-  commandRunner.run(arguments);
+  app.run(arguments);
 }
-
-// void main(List<String> arguments) {
-// if (arguments.isEmpty || arguments.first == 'help') {
-//   usage();
-// } else if (arguments.first == 'version') {
-//   print('Dartpedia CLI version $version');
-// } else if (arguments.first == 'wikipedia') {
-//   final inputArgs = arguments.length > 1 ? arguments.sublist(1) : null;
-//   search(inputArgs);
-// } else {
-//   usage();
-// }
-// }
-
-// Future<String> getArticle(String title) async {
-//   final url = Uri.https('en.wikipedia.org', '/api/rest_v1/page/summary/$title');
-//   final response = await http.get(url);
-//   if (response.statusCode != 200) {
-//     return 'Error: Failed to fetch article "$title". Status code: ${response.statusCode}';
-//   }
-
-//   return response.body;
-// }
-
-// void usage() {
-//   print(
-//     "The following commands are valid: 'help', 'version', 'search <ARTICLE-TITLE>'",
-//   );
-// }
-
-// void search(List<String>? arguments) async {
-//   final String title;
-//   if (arguments == null || arguments.isEmpty) {
-//     print('Please provide an article title.');
-//     final inputFromStdin = (stdin.readLineSync() ?? '').trim();
-//     if (inputFromStdin.isEmpty) {
-//       print('No article title provided. Exiting.');
-//       return; // Exit the function if there's no valid input.
-//     }
-//     title = inputFromStdin;
-//   } else {
-//     title = arguments.join(" ");
-//   }
-
-//   print('Looking up articles about "$title". Please wait...');
-//   var article = await getArticle(title);
-
-//   print('Here ya go!');
-//   print(article);
-// }
