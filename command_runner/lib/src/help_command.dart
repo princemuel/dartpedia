@@ -2,9 +2,6 @@ import 'dart:async';
 
 import 'package:command_runner/command_runner.dart';
 
-import 'console.dart';
-import 'exceptions.dart';
-
 // Prints program and argument usage.
 //
 // When given a command as an argument, it prints the usage of
@@ -74,17 +71,21 @@ class HelpCommand extends Command {
   String _renderCommandVerbose(Command cmd) {
     final indent = ' ' * 10;
     final buffer = StringBuffer();
+
     buffer.writeln(cmd.usage.instructionText); //abbr, name: description
     buffer.writeln('$indent ${cmd.help}');
+
     if (cmd.valueHelp != null) {
       buffer.writeln(
         '$indent [Argument] Required? ${cmd.requiresArgument}, Type: ${cmd.valueHelp}, Default: ${cmd.defaultValue ?? 'none'}',
       );
     }
+
     buffer.writeln('$indent Options:');
     for (var option in cmd.options) {
       buffer.writeln('$indent ${option.usage}');
     }
+
     return buffer.toString();
   }
 }
